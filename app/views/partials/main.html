@@ -1,0 +1,23 @@
+<div ng-include="'partials/navbar'"></div>
+
+<google-map center="map.center" 
+            zoom="map.zoom" 
+            options="map.options"
+            draggable="true" >
+  <markers models="map.markers" coords="'self'" icon="'icon'" doCluster="map.doClusterMarkers" click="'onClicked'" labelContent="'title'" labelAnchor="22 0" labelClass="marker-labels">
+    <windows show="'showWindow'" closeClick="'closeClick'" ng-cloak>
+      <p ng-non-bindable>This is a court at {{ latitude | number:4 }}, {{ longitude | number:4 }}!</p>
+      <p class="muted">My marker will stay open when the window is popped up!</p>
+    </windows>
+  </markers>
+</google-map>
+
+<ul>
+    <li ng-repeat="court in courts">
+      [{{$index + 1}}] {{court.name}}: {{court.lat}} + {{court.lng}}
+    </li>
+</ul>
+
+<div class="footer">
+  <p>@ ballnana.com 2014</p>
+</div>
