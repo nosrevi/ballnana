@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worldwide Tennis Courts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Marker Cluster files -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
+    <style>
+        /* Custom font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Leaflet popup customization */
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+        }
+        .leaflet-popup-content {
+            margin: 13px 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .leaflet-popup-tip {
+            box-shadow: none;
+        }
+        /* Loader */
+        #loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #initial-loader-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 10000;
+        }
+        .tennis-icon {
+            background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2310B981"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><path fill="%23FFFFFF" d="M5.47 7.03c3.08 1.48 5.48 4.49 6.53 7.97-3.08-1.48-5.48-4.49-6.53-7.97zm13.06 9.94c-1.05-3.48-3.45-6.49-6.53-7.97 3.08 1.48 5.48 4.49 6.53 7.97z"/></svg>');
+            background-size: contain;
+            width: 32px;
+            height: 32px;
+        }
+        /* Marker Cluster Customization */
+        .marker-cluster-small {
+            background-color: rgba(16, 185, 129, 0.6);
+        }
+        .marker-cluster-small div {
+            background-color: rgba(16, 185, 129, 0.8);
+        }
+        /* Invert color for user marker on dark maps */
+        .leaflet-tile-pane.leaflet-tile-pane-dark {
+            filter: invert(100%) hue-rotate(180deg) brightness(110%) contrast(90%);
+        }
+        .leaflet-tile-pane-dark .leaflet-marker-icon {
+             filter: invert(100%) hue-rotate(180deg);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="initial-loader-container">
+        <div class="text-center">
+            <div id="loader" class="mx-auto"></div>
+            <p class="mt-4 text-gray-600 font-semibold">Finding tennis courts near you...</p>
+        </div>
+    </div>
+
+    <div class="flex flex-col md:flex-row h-screen">
+        <!-- Sidebar -->
+        <div class="w-full md:w-1/3 lg:w-1/4 h-1/3 md:h-screen flex flex-col bg-white shadow-lg z-10">
+            <header class="p-4 border-b">
+                <h1 class="text-2xl font-bold text-gray-800 flex items-center">
+                    <svg class="w-8 h-8 mr-2 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                        <path fill="#FFF" d="M5.47 7.03c3.08 1.48 5.48 4.49 6.53 7.97-3.08-1.48-5.48-4.49-6.53-7.97zm13.06 9.94c-1.05-3.48-3.45-6.49-6.53-7.97 3.08 1.48 5.48 4.49 6.53 7.97z"/>
+                    </svg>
+                    Tennis Court Finder
+                </h1>
+            </header>
+            <div class="p-4 border-b flex items-center">
+                 <div id="list-loader" class="hidden w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mr-2"></div>
+                <p id="results-count" class="text-gray-600 font-medium">Searching for courts...</p>
+            </div>
+            <div id="court-list" class="flex-grow overflow-y-auto custom-scrollbar p-2">
+                <!-- Court items will be injected here -->
+            </div>
+        </div>
+
+        <!-- Map -->
+        <div id="map" class="w-full md:w-2/3 lg:w-3/4 h-2/3 md:h-screen"></div>
+    </div>
+
+    <script>
+        const map = L.map('map', { maxZoom: 19 }).setView([40.7128, -74.0060], 13); // Default to NYC
+        const courtList = document.getElementById('court-list');
+        const resultsCount = document.getElementById('results-count');
+        const initialLoader = document.getElementById('initial-loader-container');
+        const listLoader = document.getElementById('list-loader');
+        
+        const courtMarkers = L.markerClusterGroup({
+            iconCreateFunction: function(cluster) {
+                return L.divIcon({
+                    html: `<b>${cluster.getChildCount()}</b>`,
+                    className: 'marker-cluster marker-cluster-small',
+                    iconSize: new L.Point(40, 40)
+                });
+            }
+        });
+        map.addLayer(courtMarkers);
+
+        let userMarker;
+        let fetchedCourts = new Set(); // To avoid duplicates
+
+        // --- Tile Layers ---
+        const streetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        });
+
+        const satelliteMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        });
+
+        const darkMode = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19,
+            className: 'leaflet-tile-pane-dark'
+        });
+
+
+        streetMap.addTo(map); // Add default layer
+
+        const baseMaps = {
+            "Street": streetMap,
+            "Satellite": satelliteMap,
+            "Dark": darkMode
+        };
+
+        L.control.layers(baseMaps).addTo(map);
+
+        // --- Geolocation ---
+        map.on('locationfound', onLocationFound);
+        map.on('locationerror', onLocationError);
+        map.locate({setView: true, maxZoom: 15});
+        
+        function onLocationFound(e) {
+            const radius = e.accuracy;
+            if(userMarker) {
+                map.removeLayer(userMarker);
+            }
+            userMarker = L.marker(e.latlng).addTo(map)
+                .bindPopup("You are here").openPopup();
+            
+            initialLoader.style.display = 'none';
+            fetchTennisCourts();
+        }
+
+        function onLocationError(e) {
+            console.warn(e.message);
+            resultsCount.textContent = 'Could not find location. Showing default area.';
+            initialLoader.style.display = 'none';
+            fetchTennisCourts();
+        }
+
+        // --- Overpass API ---
+        async function fetchTennisCourts() {
+            listLoader.style.display = 'block';
+            resultsCount.textContent = 'Searching for courts...';
+
+            const bounds = map.getBounds();
+            const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+
+            // Query for nodes, ways, and relations tagged as tennis courts
+            const query = `
+                [out:json][timeout:25];
+                (
+                  node["leisure"="pitch"]["sport"="tennis"](${bbox});
+                  way["leisure"="pitch"]["sport"="tennis"](${bbox});
+                  relation["leisure"="pitch"]["sport"="tennis"](${bbox});
+                );
+                out center;
+            `;
+
+            const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                console.log('Overpass API response:', data);
+                displayCourts(data.elements);
+            } catch (error) {
+                console.error('Error fetching data from Overpass API:', error);
+                resultsCount.textContent = 'Error finding courts.';
+            } finally {
+                listLoader.style.display = 'none';
+            }
+        }
+
+        function getCenter(element) {
+             if (element.type === 'node') {
+                return { lat: element.lat, lon: element.lon };
+            }
+            if (element.center) {
+                return { lat: element.center.lat, lon: element.center.lon };
+            }
+            if (element.type === 'way' && element.nodes && element.nodes.length > 0) {
+                 return null; 
+            }
+            return null;
+        }
+
+
+        function displayCourts(courts) {
+            courts.forEach(court => {
+                if (fetchedCourts.has(court.id)) {
+                    return; // Skip if already added
+                }
+
+                const center = getCenter(court);
+                if (!center) {
+                    console.warn('Could not determine center for element:', court);
+                    return;
+                }
+
+                fetchedCourts.add(court.id);
+
+                const lat = center.lat;
+                const lon = center.lon;
+                const name = court.tags?.name || 'Tennis Court';
+                const surface = court.tags?.surface ? `Surface: ${court.tags.surface}` : '';
+                const lit = court.tags?.lit === 'yes' ? 'Lit' : 'Not Lit';
+
+                const icon = L.divIcon({
+                    className: 'tennis-icon',
+                    iconSize: [32, 32]
+                });
+                
+                const marker = L.marker([lat, lon], {icon: icon});
+                marker.bindPopup(`<b>${name}</b><br>${surface}<br>${lit}`);
+                courtMarkers.addLayer(marker);
+                
+                const listItem = document.createElement('div');
+                listItem.className = 'p-4 border-b cursor-pointer hover:bg-gray-100 rounded-lg transition duration-200';
+                listItem.innerHTML = `
+                    <h3 class="font-semibold text-lg text-gray-800">${name}</h3>
+                    <p class="text-gray-600">${surface}</p>
+                    <p class="text-sm text-gray-500">${lit}</p>
+                `;
+                listItem.addEventListener('click', () => {
+                    map.setView([lat, lon], 18);
+                    setTimeout(() => {
+                        marker.openPopup();
+                    }, 300);
+                });
+                courtList.appendChild(listItem);
+            });
+            
+            updateResultsCount();
+        }
+
+        function updateResultsCount() {
+            const count = fetchedCourts.size;
+             if (count === 0) {
+                resultsCount.textContent = 'No courts found in this area. Try zooming out.';
+                 courtList.innerHTML = `<p class="p-4 text-gray-500">No courts found here. Pan or zoom the map to search in a new area.</p>`;
+            } else {
+                resultsCount.textContent = `Showing ${count} courts.`;
+            }
+        }
+
+        // --- Map Events ---
+        let fetchTimeout;
+        map.on('moveend', () => {
+             clearTimeout(fetchTimeout);
+             fetchTimeout = setTimeout(fetchTennisCourts, 1500); // Debounce fetching
+        });
+        
+    </script>
+</body>
+</html>
